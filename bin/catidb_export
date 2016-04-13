@@ -79,6 +79,8 @@ parser.add_argument('-o', '--output', dest='output', nargs='?', const=default_ou
                     help='Output directory. Defalut value is "%s"' % default_output)
 parser.add_argument('-s', '--study', dest='study', required=True,
                     help='Name of the study to expose.')
+parser.add_argument('-x', '--exclude', dest='exclude', nargs='*', default=['extension=.tar.gz'],
+                    help='List of <attribute>=<value> used to exclude files from selection. Default: extension=.tar.gz')
 parser.add_argument('-t', '--time_point', dest='time_point',
                     help='Select a specific time point. By default all time points are selected.')
 parser.add_argument('-m', '--modality', dest='modality',
@@ -103,6 +105,14 @@ if options.password == '':
 else:
     password = options.password
 
+exclude_by_attribute = {}
+for rule in options.exclude:
+    s = rule.split('=', 1)
+    if len(s) == 2:
+        exclude_by_attribute[s[0]] = s[1]
+    else:
+        print >> sys.stderr, 'ERROR: "%s" is an invalid value for --exclude parameter (missing = sign)' % rule
+        sys.exit(1)
 catidb = get_catidb(server=options.url, login=options.login, password=password)
 from pprint import pprint
 
@@ -121,6 +131,7 @@ modalities = set()
 sequences = set()
 centers = {}
 file_copy = {}
+exclude_paths = set()
 total_size = 0
 count = 0
 
@@ -190,6 +201,7 @@ for path_dict in paths:
             extension = '.' + s[1]
         else:
             extension = ''
+        path_dict['extension'] = extension
         dest_path = build_dest_path(study=study,
                                     action_name=action_name, 
                                     action_attribute=action_attribute,
@@ -212,6 +224,16 @@ for path_dict in paths:
             print >> sys.stderr, '{0} paths processed on {1} ({2} subjects, {3} actions)'.format(count, len(paths), len(subjects), actions_count)
 
 if options.verbose:
+    jasmin_paths = {}
+    exclude_path = set()
+    for source_path in file_copy:
+        dest_path, attributes = file_copy[source_path]
+        for k, v in exclude_by_attribute.iteritems():
+            if attribute.get(k) == v:
+                exclude.add(dest_path)
+                break
+        else:
+            jasmin_paths[dest_path] = attributes
     print >> sys.stderr, 'Rename file names in actions'
     for action_name in jasmin_actions:
         for action_id in jasmin_actions[action_name]:
@@ -242,7 +264,8 @@ if options.verbose:
                     pprint(action)
                     raise
 print actions_count, 'actions'
-print len(file_copy), 'files to copy'
+print len(jasmin_path), 'files to copy'
+print len(exclude), 'files excluded'
 print 'Cumulated file size:', sizeof_fmt(total_size)
 print len(subjects), ' subjects concerned'
 print 'actions names:', ', '.join(action_names)
@@ -250,16 +273,12 @@ print 'modalities:', ', '.join(modalities)
 print 'sequences:', ', '.join(sequences)
 print 'time_points:', ', '.join(time_points)
 
-jasmin_paths = {}
 jasmin = {'catidb_piws': {'paths': jasmin_paths,
                           'actions': jasmin_actions}}
 if options.output:    
     jasmin_file = osp.join(study_directory, '%s.jasmin' % study)
     if options.verbose:
         print >> sys.stderr, 'Writing jasmin files in', jasmin_file
-    for source_path in file_copy:
-        dest_path, attributes = file_copy[source_path]
-        jasmin_paths[dest_path] = attributes
     json.dump(jasmin, BZ2File(jasmin_file, 'w'))
 
     directories = set()
