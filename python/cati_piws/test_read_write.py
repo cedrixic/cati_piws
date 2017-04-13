@@ -34,7 +34,7 @@ class TestJasminIO(unittest.TestCase):
 
     # Temporary data arborescence base dir
     self.dir1test = mkdtemp('','test_jasminIO_')
-#    print('tmpdir1 : ', self.dir1test)
+    print('tmpdir1 : ', self.dir1test)
     self.dir2test = self.dir1test + '/subject1/'
     self.dir3test = self.dir1test + '/subject1/modality1/'
     self.dir4test = self.dir1test + '/subject1/modality2/'
@@ -114,8 +114,76 @@ class TestJasminIO(unittest.TestCase):
     '''   
     Clean-up of temporary directory
     '''
-    shutil.rmtree(self.dir1test)
+    #shutil.rmtree(self.dir1test)
     
+  def test_ReadWriteAttributesJasmin(self):
+    '''   
+    Testing read/write attributes function (whole dictionary processing)
+    '''
+    
+#    Jasmin file access instance
+    j_file = jasmin.JasminFile(self.file2write, self.dic2write)
+    
+#    Testing write_attributes function
+    self.assertEqual(
+      j_file.write_attributes(),True)
+      
+#    Testing write_attributes function with no dict
+    self.assertEqual(
+      j_file.write_attributes(),True)
+
+#    Testing read_attributes function in an attached .jasmin file      
+    (dicRes, jasmin_path) = j_file.read_attributes(self.file2write)    
+    self.assertEqual(dicRes == self.dic2write[self.test_framework]\
+                     ['paths'][self.file2write], True)
+
+  def test_GetSetSingleAttributeJasmin(self):
+    '''   
+    Testing get/set_attribute function (single attribute value)
+    '''
+#    Jasmin file access instance
+    j_file = jasmin.JasminFile(self.file2write, self.dic2write)
+
+
+#    Write jasmin file from a dictionary
+    if j_file.write_attributes() :
+      
+#      Test if attribute can be reached with no path
+      self.assertEqual( j_file.get_attribute(self.attributeToGet),
+                       self.test_center)
+#      Test if attribute can be reached
+      self.assertEqual( j_file.get_attribute(self.attributeToGet, 
+                       self.file2write),self.test_center)
+                       
+#      Test if new attribute can be set and correctly read
+      j_file.set_attribute( self.attributeToSet, 
+                              self.valueToSet, 
+                              self.file2write)
+      self.assertEqual( j_file.get_attribute(self.attributeToSet, 
+                       self.file2write),self.valueToSet)
+#      Test if new attribute can be set and correctly read
+      j_file.set_attribute( self.attributeToSet, 
+                              self.valueToSet)
+      self.assertEqual( j_file.get_attribute(self.attributeToSet),
+                       self.valueToSet)
+                       
+#      Test if attribute value can be replaced and correctly read
+      j_access.set_attribute( self.attributeToReplace, 
+                              self.valueToReplace, 
+                              self.file2write)
+      self.assertEqual( j_access.get_attribute(self.attributeToReplace, 
+                       self.file2write),self.valueToReplace)
+                               
+#      Test if attribute value can be read in a root .jasmin file
+    self.assertEqual(
+      j_access.get_attribute(self.attributeToGet, 
+                             self.file2readRecurs),self.test_center)
+                             
+#      Test behavior when trying to reach a non existing attribute
+    self.assertEqual(
+      j_access.get_attribute(self.attributeToGet, 
+                             self.file2readRecursFalse),False)
+
     
   def test_ReadWriteAttributes(self):
     '''   

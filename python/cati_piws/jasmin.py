@@ -69,6 +69,7 @@ class JasminFile(object):
         else :
           self.dict = dic
 
+        self.jasmin_path = self.path + '.jasmin'
 
         #print("type : ", type(self.dict))
         #print(self.dict)
@@ -182,20 +183,87 @@ class JasminFile(object):
     def dictionary(self):
       return self.dict
     
-    def get_attribute(self, attribute, dic, file_path, framework = None):
+    def get_attribute(self, attribute, file_path = None, framework = None):
       '''
       Gets the value of a given attribute from a dictionary
       The dictionary is read from a .jasmin file
       '''
       if framework is None:
         framework = self.framework
-      local_dic = self.get_path(file_path)
+      if file_path is None:
+        file_path = self.path
+        
+      local_dic = self.dict
       if local_dic is not None :
         if attribute in local_dic :
           return local_dic[attribute]
         else :
           return None
       else :
+        return False
+      
+    def set_attribute(self, attribute, value, file_path = None, framework = None):
+      '''
+      Sets the value of a given attribute in a .jasmin file
+      If the attribute exists, overrides the stored value.
+      '''
+      if framework is None:
+        framework = self.framework
+      if file_path is None:
+        file_path = self.path
+        
+      dic, jasmin_path = self.read_attributes(file_path)
+      
+      dic = self.dict
+      dic[framework]['paths'][file_path][attribute] = value
+      self.save()
+      
+  
+    def read_attributes(self, file_path = None, path_attr = None):
+      '''
+      Reads a jasmin file and returns a dictionnary of attributes, if the 
+      corresponding file path is defined in the jasmin file
+      If path.jasmin exists : returns the dictionnary of attributes corresponding 
+                              to the file given in argument
+      Else : recursively goes up in file-tree, looking up for the first .jasmin 
+             file found. When found, returns the dictionnary of attributes 
+             corresponding to the file given in argument
+      '''
+      if file_path is None :
+        file_path = self.path
+        
+      dic_res = None 
+      if path_attr is None :
+        path_attr = file_path
+        
+      jasmin_path = file_path + '.jasmin'
+      
+      if osp.isfile(jasmin_path) is True :
+        dic_res = self.get_path(path_attr)
+        if dic_res is not None :
+          return (dic_res, jasmin_path)
+      
+      else :
+        if os.path.realpath(file_path) is '/' :
+          return False
+          
+      dirpath, filename = os.path.split(jasmin_path)
+      dirpath = str(os.path.abspath(os.path.join(dirpath, '..')) + '/')
+      return self.read_attributes(dirpath, path_attr)
+    
+    
+    def write_attributes(self):
+      '''
+      Writes attribute on a jasmin file.
+      If attribute exists : writes corresponding value on dictionary & save file
+      Else : creates the attribute, write its value and save file
+      '''
+      
+      if osp.isfile(self.jasmin_path) is False :
+        self.save()
+        return True
+      else :     
+        # TODO
         return False
         
     
